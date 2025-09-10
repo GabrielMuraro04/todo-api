@@ -3,6 +3,9 @@ package com.seuprojeto.todo_api.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
+
 
 @Entity
 @Table(name = "todos")
@@ -15,6 +18,7 @@ public class Todo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "O título é obrigatório")
     @Column(nullable = false)
     private String titulo;
 

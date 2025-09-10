@@ -1,13 +1,14 @@
 package com.seuprojeto.todo_api.controller;
 
+import com.seuprojeto.todo_api.exception.ResourceNotFoundException;
 import com.seuprojeto.todo_api.model.Todo;
 import com.seuprojeto.todo_api.repository.TodoRepository;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/todos")
@@ -19,45 +20,49 @@ public class TodoController {
         this.todoRepository = todoRepository;
     }
 
+    // Listar todos
     @GetMapping
     public List<Todo> getTodos() {
         return todoRepository.findAll();
     }
 
-    @PostMapping
-    public Todo criarTodo(@RequestBody Todo todo) {
-        todo.setDataCriacao(LocalDateTime.now());
-        return todoRepository.save(todo);
-    }
-
-    @PutMapping("/{id}")
-    public Todo updateTodo(@PathVariable Long id, @RequestBody Todo todoAtualizado) {
-        Optional<Todo> todoExistente = todoRepository.findById(id);
-        if (todoExistente.isPresent()) {
-            Todo todo = todoExistente.get();
-            todo.setTitulo(todoAtualizado.getTitulo());
-            todo.setDescricao(todoAtualizado.getDescricao());
-            todo.setConcluida(todoAtualizado.isConcluida());
-            return todoRepository.save(todo);
-        } else {
-            throw new RuntimeException("Todo com ID " + id + " não encontrado");
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public String deleteTodo(@PathVariable Long id) {
-        if (todoRepository.existsById(id)) {
-            todoRepository.deleteById(id);
-            return "Todo com ID " + id + " removido com sucesso!";
-        } else {
-            return "Todo com ID " + id + " não encontrado!";
-        }
-    }
-
+    // Buscar por id
     @GetMapping("/{id}")
     public ResponseEntity<Todo> getTodoById(@PathVariable Long id) {
-        return todoRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Todo todo = todoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com id: " + id));
+
+        return ResponseEntity.ok(todo);
+    }
+
+    // Criar
+    @PostMapping
+    public ResponseEntity<Todo> createTodo(@Valid @RequestBody Todo todo) {
+        Todo savedTodo = todoRepository.save(todo);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedTodo);
+    }
+
+    // Atualizar
+    @PutMapping("/{id}")
+    public ResponseEntity<Todo> updateTodo(@PathVariable Long id, @Valid @RequestBody Todo todoAtualizado) {
+        Todo todo = todoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com id: " + id));
+
+        todo.setTitulo(todoAtualizado.getTitulo());
+        todo.setDescricao(todoAtualizado.getDescricao());
+        todo.setConcluida(todoAtualizado.isConcluida());
+
+        Todo updatedTodo = todoRepository.save(todo);
+        return ResponseEntity.ok(updatedTodo);
+    }
+
+    // Deletar
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTodo(@PathVariable Long id) {
+        Todo todo = todoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com id: " + id));
+
+        todoRepository.delete(todo);
+        return ResponseEntity.noContent().build();
     }
 }
