@@ -1,6 +1,7 @@
 package com.seuprojeto.todo_api.controller;
 
-import com.seuprojeto.todo_api.dto.TodoResponseDTO;
+import com.seuprojeto.todo_api.dto.TodoDTO;
+import com.seuprojeto.todo_api.dto.TodoRequestDTO;
 import com.seuprojeto.todo_api.exception.ResourceNotFoundException;
 import com.seuprojeto.todo_api.model.Todo;
 import com.seuprojeto.todo_api.repository.TodoRepository;
@@ -10,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/todos")
@@ -22,53 +22,47 @@ public class TodoController {
         this.todoRepository = todoRepository;
     }
 
-    // Converter entidade Todo para DTO
-    private TodoResponseDTO toResponseDTO(Todo todo) {
-        return new TodoResponseDTO(
-                todo.getId(),
-                todo.getTitulo(),
-                todo.getDescricao(),
-                todo.isConcluida(),
-                todo.getDataCriacao()
-        );
-    }
-
     // Listar todos
     @GetMapping
-    public List<TodoResponseDTO> getTodos() {
+    public List<TodoDTO> getTodos() {
         return todoRepository.findAll()
                 .stream()
-                .map(this::toResponseDTO)
-                .collect(Collectors.toList());
+                .map(TodoDTO::new) // converte cada Todo em TodoDTO
+                .toList();
     }
 
     // Buscar por id
     @GetMapping("/{id}")
-    public ResponseEntity<TodoResponseDTO> getTodoById(@PathVariable Long id) {
+    public ResponseEntity<TodoDTO> getTodoById(@PathVariable Long id) {
         Todo todo = todoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com id: " + id));
-        return ResponseEntity.ok(toResponseDTO(todo));
+        return ResponseEntity.ok(new TodoDTO(todo));
     }
 
     // Criar
     @PostMapping
-    public ResponseEntity<TodoResponseDTO> createTodo(@Valid @RequestBody Todo todo) {
+    public ResponseEntity<TodoDTO> createTodo(@Valid @RequestBody TodoRequestDTO dto) {
+        Todo todo = new Todo();
+        todo.setTitulo(dto.getTitulo());
+        todo.setDescricao(dto.getDescricao());
+        todo.setConcluida(dto.isConcluida());
+
         Todo savedTodo = todoRepository.save(todo);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(savedTodo));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new TodoDTO(savedTodo));
     }
 
     // Atualizar
     @PutMapping("/{id}")
-    public ResponseEntity<TodoResponseDTO> updateTodo(@PathVariable Long id, @Valid @RequestBody Todo todoAtualizado) {
+    public ResponseEntity<TodoDTO> updateTodo(@PathVariable Long id, @Valid @RequestBody TodoRequestDTO dto) {
         Todo todo = todoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com id: " + id));
 
-        todo.setTitulo(todoAtualizado.getTitulo());
-        todo.setDescricao(todoAtualizado.getDescricao());
-        todo.setConcluida(todoAtualizado.isConcluida());
+        todo.setTitulo(dto.getTitulo());
+        todo.setDescricao(dto.getDescricao());
+        todo.setConcluida(dto.isConcluida());
 
-        Todo updated = todoRepository.save(todo);
-        return ResponseEntity.ok(toResponseDTO(updated));
+        Todo updatedTodo = todoRepository.save(todo);
+        return ResponseEntity.ok(new TodoDTO(updatedTodo));
     }
 
     // Deletar
@@ -82,10 +76,10 @@ public class TodoController {
 
     // Filtrar por palavra no título
     @GetMapping("/filtro/titulo")
-    public List<TodoResponseDTO> filtrarPorTitulo(@RequestParam String palavra) {
+    public List<TodoDTO> filtrarPorTitulo(@RequestParam String palavra) {
         return todoRepository.findByTituloContaining(palavra)
                 .stream()
-                .map(this::toResponseDTO)
-                .collect(Collectors.toList());
+                .map(TodoDTO::new)
+                .toList();
     }
 }
